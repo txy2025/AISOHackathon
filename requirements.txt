@@ -64,3 +64,4 @@ python-docx
 # sentence-transformers==5.1.2
 # transformers==4.57.1
 openai
+google-generativeai>= 0.8.5

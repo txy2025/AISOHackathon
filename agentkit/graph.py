@@ -63,6 +63,19 @@ def log_step(title: str, state: AgentState):
         print(f"Job: {state['selected_job'].get('title')} @ {state['selected_job'].get('company')}")
     print("=" * 80 + "\n")
 
+
+def safe_llm_invoke(messages):
+    try:
+        return llm.invoke(messages)
+    except Exception as e:
+        print(f"[LLM ERROR] {e}")
+        class Dummy:
+            content = "MODEL_ERROR"
+        return Dummy()
+
+# Replace all llm.invoke(...) calls like this:
+
+
 # -----------------------------------------------------------------------------
 # EMBEDDING
 # -----------------------------------------------------------------------------
@@ -75,7 +88,7 @@ def get_embedding_with_gpt(text: str) -> List[float]:
     TEXT:
     {text[:1000]}
     """
-    response = llm.invoke([{"role": "user", "content": prompt}])
+    response = safe_llm_invoke([{"role": "user", "content": prompt}])
     try:
         emb = json.loads(response.content)
         print(f"[Embedding] Got {len(emb)}-dim vector.")
@@ -90,7 +103,7 @@ def get_embedding_with_gpt(text: str) -> List[float]:
 def upload_cv_node(state: AgentState) -> AgentState:
     log_step("upload_cv_node", state)
     cv_text = state["cv_text"]
-    response = llm.invoke(
+    response = safe_llm_invoke(
         [
             {
                 "role": "system",
@@ -156,7 +169,7 @@ Original CV:
 
 Respond ONLY with valid LaTeX code (no explanations).
 """
-    response = llm.invoke([{"role": "user", "content": prompt}])
+    response = safe_llm_invoke([{"role": "user", "content": prompt}])
     latex_code = response.content.strip()
     tmp_dir = Path(tempfile.mkdtemp())
     tex_file = tmp_dir / "cv_updated.tex"
@@ -190,7 +203,7 @@ def send_email_node(state: AgentState) -> AgentState:
     print(f"[send_email_node] Preparing email to {job['recruiter_email']}...")
     pdf_bytes = state.get("updated_cv_pdf")
     cover_letter_prompt = f"Write a short, professional cover letter for {job['title']} at {job['company']}."
-    resp = llm.invoke([{"role": "user", "content": cover_letter_prompt}])
+    resp = safe_llm_invoke([{"role": "user", "content": cover_letter_prompt}])
     cover_letter = resp.content
     msg = MIMEMultipart()
     msg["Subject"] = f"Application for {job['title']} at {job['company']}"

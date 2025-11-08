@@ -141,26 +141,48 @@ def update_cv_for_job_node(state: AgentState) -> AgentState:
     cv_text = state["cv_text"]
     print(f"[update_cv_for_job_node] Customizing CV for job '{job['title']}'.")
     prompt = f"""
-You are an expert CV formatter.
-Given this CV and job description, rewrite the CV in professional LaTeX format.
-Keep it truthful but emphasize parts relevant to the job.
+        You are an expert LaTeX CV writer and compiler.
 
-Job title: {job['title']}
-Company: {job['company']}
-Description: {job['description']}
+        Your task:
+        - Rewrite or rebuild a *complete, professional CV* in LaTeX form.
+        - Base it entirely on the information below (CV text + job description).
+        - Emphasize the skills and experiences most relevant to the job.
+        - Keep it fully truthful — do not invent or add fake data.
+        - Do not include any explanations, instructions, or comments.
+        - Do not wrap output in code fences or add "Here is your LaTeX code".
+        - Produce **only** valid LaTeX code that can compile on its own.
 
-Original CV:
-{cv_text}
+        The output **must start with** \\documentclass and include:
+        \\documentclass{{article}}
+        \\usepackage{{geometry}}
+        \\usepackage{{titlesec}}
+        \\usepackage{{enumitem}}
+        \\begin{{document}} ... \\end{{document}}
 
-Respond ONLY with valid LaTeX code (no explanations).
-"""
+        Use a clean layout:
+        - A clear name header
+        - Contact information
+        - A short professional summary
+        - Skills section
+        - Experience section (chronological)
+        - Education section
+
+        ### Job Details
+        Title: {job['title']}
+        Company: {job['company']}
+        Description: {job['description']}
+
+        ### Original CV Text
+        {cv_text}
+    """
     print(prompt)
     response = gemini_invoke([{"role": "user", "content": prompt}])
-    print(response)
     latex_code = response.content.strip()
+    print(latex_code)
     tmp_dir = Path(tempfile.mkdtemp())
-    tex_file = tmp_dir / "cv_updated.tex"
+    tex_file = tmp_dir / "cv_update_gemini.tex"
     pdf_file = tmp_dir / "cv_updated.pdf"
+    print(tex_file)
     tex_file.write_text(latex_code, encoding="utf-8")
 
     try:

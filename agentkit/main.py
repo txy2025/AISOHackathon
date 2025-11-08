@@ -34,7 +34,7 @@ def action(user_id: str = Form(...), job_id: int = Form(...), action: str = Form
         "title": "Machine Learning Engineer",
         "company": "Google Research",
         "description": "Develop AI systems, deploy models, work with distributed training.",
-        "recruiter_email": "recruiter@google.com",
+        "recruiter_email": "kichujyothis@gmail.com",
     }
     state = {
         "user_id": user_id,

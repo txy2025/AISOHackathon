@@ -14,7 +14,7 @@ router = APIRouter()
 # ---------------------------------------------------------------------
 # Load credentials from client_secret.json
 # ---------------------------------------------------------------------
-GOOGLE_CLIENT_CONFIG = json.load(open("google_client_secretv.json"))
+GOOGLE_CLIENT_CONFIG = json.load(open("google_client_secret.json"))
 SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
 
 # ---------------------------------------------------------------------

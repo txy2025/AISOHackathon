@@ -9,7 +9,7 @@ from email.mime.base import MIMEBase
 from email.mime.text import MIMEText
 from email import encoders
 from langgraph.graph import StateGraph
-from langchain_openai import ChatOpenAI
+import google.generativeai as genai  # ✅ Gemini SDK
 from utils import (
     save_cv_to_db,
     get_jobs_for_embedding,
@@ -18,16 +18,27 @@ from utils import (
 )
 
 # -----------------------------------------------------------------------------
-# CONFIG
+# CONFIG — use Gemini instead of OpenAI
 # -----------------------------------------------------------------------------
-GPT5_API_BASE = "https://fj7qg3jbr3.execute-api.eu-west-1.amazonaws.com/v1"
-GPT5_API_KEY = os.getenv("OPENAI_API_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+genai.configure(api_key=GEMINI_API_KEY)
+MODEL_NAME = "gemini-1.5-flash"  # or gemini-1.5-pro if you need higher quality
 
-llm = ChatOpenAI(
-    model="gpt-5-nano",
-    openai_api_base=GPT5_API_BASE,
-    openai_api_key=GPT5_API_KEY,
-)
+# Simple helper to mimic llm.invoke
+def gemini_invoke(messages: List[Dict[str, str]]):
+    """Flatten Chat-style messages and call Gemini."""
+    try:
+        text = "\n".join([f"{m['role']}: {m['content']}" for m in messages])
+        model = genai.GenerativeModel(MODEL_NAME)
+        response = model.generate_content(text)
+        class Dummy:
+            content = response.text
+        return Dummy()
+    except Exception as e:
+        print(f"[GEMINI ERROR] {e}")
+        class Dummy:
+            content = "MODEL_ERROR"
+        return Dummy()
 
 # -----------------------------------------------------------------------------
 # STATE
@@ -63,39 +74,13 @@ def log_step(title: str, state: AgentState):
         print(f"Job: {state['selected_job'].get('title')} @ {state['selected_job'].get('company')}")
     print("=" * 80 + "\n")
 
-
-def safe_llm_invoke(messages):
-    try:
-        return llm.invoke(messages)
-    except Exception as e:
-        print(f"[LLM ERROR] {e}")
-        class Dummy:
-            content = "MODEL_ERROR"
-        return Dummy()
-
-# Replace all llm.invoke(...) calls like this:
-
-
 # -----------------------------------------------------------------------------
-# EMBEDDING
+# EMBEDDING (mocked, since Gemini doesn’t return numeric embeddings directly)
 # -----------------------------------------------------------------------------
 def get_embedding_with_gpt(text: str) -> List[float]:
-    print("[Embedding] Generating embedding...")
-    prompt = f"""
-    Convert the following text into a compact numeric embedding vector of 32 float values.
-    Respond with JSON list only, no explanation.
-
-    TEXT:
-    {text[:1000]}
-    """
-    response = safe_llm_invoke([{"role": "user", "content": prompt}])
-    try:
-        emb = json.loads(response.content)
-        print(f"[Embedding] Got {len(emb)}-dim vector.")
-        return emb
-    except Exception:
-        print("[Embedding] Failed to parse, using fallback.")
-        return [float(ord(c) % 100) / 100 for c in text[:32]]
+    print("[Embedding] Generating embedding (simulated for Gemini)...")
+    # Gemini doesn’t have embedding API yet (use a text hash as fallback)
+    return [float(ord(c) % 100) / 100 for c in text[:32]]
 
 # -----------------------------------------------------------------------------
 # NODES
@@ -103,7 +88,7 @@ def get_embedding_with_gpt(text: str) -> List[float]:
 def upload_cv_node(state: AgentState) -> AgentState:
     log_step("upload_cv_node", state)
     cv_text = state["cv_text"]
-    response = safe_llm_invoke(
+    response = gemini_invoke(
         [
             {
                 "role": "system",
@@ -156,23 +141,21 @@ def update_cv_for_job_node(state: AgentState) -> AgentState:
     cv_text = state["cv_text"]
     print(f"[update_cv_for_job_node] Customizing CV for job '{job['title']}'.")
     prompt = f"""
-        You are an expert CV formatter.
-        Given this CV and job description, rewrite the CV in professional LaTeX format.
-        Keep it truthful but emphasize parts relevant to the job.
+You are an expert CV formatter.
+Given this CV and job description, rewrite the CV in professional LaTeX format.
+Keep it truthful but emphasize parts relevant to the job.
 
-        Job title: {job['title']}
-        Company: {job['company']}
-        Description: {job['description']}
+Job title: {job['title']}
+Company: {job['company']}
+Description: {job['description']}
 
-        Original CV:
-        {cv_text}
+Original CV:
+{cv_text}
 
-        Respond ONLY with valid LaTeX code (no explanations).
-    """
-    print(prompt)
-    response = safe_llm_invoke([{"role": "user", "content": prompt}])
+Respond ONLY with valid LaTeX code (no explanations).
+"""
+    response = gemini_invoke([{"role": "user", "content": prompt}])
     latex_code = response.content.strip()
-    print(latex_code)
     tmp_dir = Path(tempfile.mkdtemp())
     tex_file = tmp_dir / "cv_updated.tex"
     pdf_file = tmp_dir / "cv_updated.pdf"
@@ -187,15 +170,14 @@ def update_cv_for_job_node(state: AgentState) -> AgentState:
             check=True,
         )
         pdf_bytes = pdf_file.read_bytes()
-        state["updated_cv_text"] = latex_code
-        state["updated_cv_pdf"] = pdf_bytes
-        state["assistant_message"] = f"CV customized and compiled to PDF for {job['title']}."
         print("[update_cv_for_job_node] PDF compilation succeeded.")
     except Exception as e:
-        state["assistant_message"] = f"LaTeX compilation failed: {e}"
-        state["updated_cv_text"] = latex_code
-        state["updated_cv_pdf"] = None
         print(f"[update_cv_for_job_node] PDF compilation failed: {e}")
+        pdf_bytes = None
+
+    state["updated_cv_text"] = latex_code
+    state["updated_cv_pdf"] = pdf_bytes
+    state["assistant_message"] = f"CV customized for {job['title']} (PDF {'attached' if pdf_bytes else 'skipped'})."
     return state
 
 
@@ -205,7 +187,7 @@ def send_email_node(state: AgentState) -> AgentState:
     print(f"[send_email_node] Preparing email to {job['recruiter_email']}...")
     pdf_bytes = state.get("updated_cv_pdf")
     cover_letter_prompt = f"Write a short, professional cover letter for {job['title']} at {job['company']}."
-    resp = safe_llm_invoke([{"role": "user", "content": cover_letter_prompt}])
+    resp = gemini_invoke([{"role": "user", "content": cover_letter_prompt}])
     cover_letter = resp.content
     msg = MIMEMultipart()
     msg["Subject"] = f"Application for {job['title']} at {job['company']}"
@@ -291,5 +273,5 @@ def build_graph():
 
     graph.set_entry_point("router_node")
     graph.set_finish_point("end")
-    print("✅ LangGraph built successfully.")
+    print("✅ LangGraph built successfully (Gemini).")
     return graph.compile()

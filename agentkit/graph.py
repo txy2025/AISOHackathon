@@ -22,7 +22,7 @@ from utils import (
 # -----------------------------------------------------------------------------
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 genai.configure(api_key=GEMINI_API_KEY)
-MODEL_NAME = "gemini-1.5-flash"  # or gemini-1.5-pro if you need higher quality
+MODEL_NAME = "gemini-2.5-flash-lite"  # or gemini-1.5-pro if you need higher quality
 
 # Simple helper to mimic llm.invoke
 def gemini_invoke(messages: List[Dict[str, str]]):
@@ -154,7 +154,9 @@ Original CV:
 
 Respond ONLY with valid LaTeX code (no explanations).
 """
+    print(prompt)
     response = gemini_invoke([{"role": "user", "content": prompt}])
+    print(response)
     latex_code = response.content.strip()
     tmp_dir = Path(tempfile.mkdtemp())
     tex_file = tmp_dir / "cv_updated.tex"

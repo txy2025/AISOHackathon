@@ -11,7 +11,7 @@ from email.mime.text import MIMEText
 from email import encoders
 from langgraph.graph import StateGraph, END
 from langchain_openai import ChatOpenAI
-from tools import (
+from utils import (
     save_cv_to_db,
     get_jobs_for_embedding,
     save_user_action,

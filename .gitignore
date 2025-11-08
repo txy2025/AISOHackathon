@@ -2,3 +2,5 @@
 __pycache__/
 *.pyc
 google_client_secret.json
+*.db
+generated_cvs/

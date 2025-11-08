@@ -134,75 +134,109 @@ def save_action_node(state: AgentState) -> AgentState:
     print(f"[save_action_node] Saved action '{state['user_action']}'.")
     return state
 
-
 def update_cv_for_job_node(state: AgentState) -> AgentState:
     log_step("update_cv_for_job_node", state)
     job = state["selected_job"]
     cv_text = state["cv_text"]
     print(f"[update_cv_for_job_node] Customizing CV for job '{job['title']}'.")
+
+    # ------------------ LLM prompt ------------------
     prompt = f"""
-        You are an expert LaTeX CV writer and compiler.
+You are an expert LaTeX CV writer and compiler.
 
-        Your task:
-        - Rewrite or rebuild a *complete, professional CV* in LaTeX form.
-        - Base it entirely on the information below (CV text + job description).
-        - Emphasize the skills and experiences most relevant to the job.
-        - Keep it fully truthful — do not invent or add fake data.
-        - Do not include any explanations, instructions, or comments.
-        - Do not wrap output in code fences or add "Here is your LaTeX code".
-        - Produce **only** valid LaTeX code that can compile on its own.
+Your task:
+- Rewrite or rebuild a *complete, professional CV* in LaTeX form.
+- Base it entirely on the information below (CV text + job description).
+- Emphasize the skills and experiences most relevant to the job.
+- Keep it fully truthful — do not invent or add fake data.
+- Do not include any explanations, instructions, or comments.
+- Do not wrap output in code fences or add "Here is your LaTeX code".
+- Produce **only** valid LaTeX code that can compile on its own.
 
-        The output **must start with** \\documentclass and include:
-        \\documentclass{{article}}
-        \\usepackage{{geometry}}
-        \\usepackage{{titlesec}}
-        \\usepackage{{enumitem}}
-        \\begin{{document}} ... \\end{{document}}
+The output **must start with** \\documentclass and include:
+\\documentclass{{article}}
+\\usepackage[utf8]{{inputenc}}
+\\usepackage[T1]{{fontenc}}
+\\usepackage[margin=1in]{{geometry}}
+\\usepackage{{titlesec}}
+\\usepackage{{enumitem}}
+\\begin{{document}} ... \\end{{document}}
 
-        Use a clean layout:
-        - A clear name header
-        - Contact information
-        - A short professional summary
-        - Skills section
-        - Experience section (chronological)
-        - Education section
+Use a clean layout:
+- A clear name header
+- Contact information
+- A short professional summary
+- Skills section
+- Experience section (chronological)
+- Education section
 
-        ### Job Details
-        Title: {job['title']}
-        Company: {job['company']}
-        Description: {job['description']}
+### Job Details
+Title: {job['title']}
+Company: {job['company']}
+Description: {job['description']}
 
-        ### Original CV Text
-        {cv_text}
-    """
-    print(prompt)
+### Original CV Text
+{cv_text}
+"""
     response = gemini_invoke([{"role": "user", "content": prompt}])
     latex_code = response.content.strip()
-    print(latex_code)
-    tmp_dir = Path(tempfile.mkdtemp())
-    tex_file = tmp_dir / "cv_update_gemini.tex"
-    pdf_file = tmp_dir / "cv_updated_gemini.pdf"
-    print(tex_file)
-    tex_file.write_text(latex_code, encoding="utf-8")
+    print("\n[update_cv_for_job_node] --- LLM output start ---\n")
+    print(latex_code[:1500])  # preview
+    print("\n[update_cv_for_job_node] --- LLM output end ---\n")
 
+    # ------------------ Write LaTeX to temp dir ------------------
+    output_dir = Path(__file__).resolve().parent / "generated_cvs"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Each user/job gets its own subfolder for clarity
+    subfolder_name = f"user_{state['user_id']}_job_{job['id']}"
+    tmp_dir = output_dir / subfolder_name
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    tex_file = tmp_dir / "cv_update_gemini.tex"
+    pdf_file = tmp_dir / "cv_update_gemini.pdf"
+    tex_file.write_text(latex_code, encoding="utf-8")
+    print(f"[update_cv_for_job_node] Written {tex_file}")
+
+    # ------------------ Compile LaTeX safely ------------------
     try:
-        subprocess.run(
-            ["/usr/bin/pdflatex", "-interaction=nonstopmode", tex_file.name],
+        result = subprocess.run(
+            ["pdflatex", "-interaction=nonstopmode", tex_file.name],
             cwd=tmp_dir,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=True,
+            capture_output=True,
+            text=True,
+            check=False,
         )
-        pdf_bytes = pdf_file.read_bytes()
-        print("[update_cv_for_job_node] PDF compilation succeeded.")
+
+        print("[pdflatex exit code]", result.returncode)
+        print("[stdout tail]", result.stdout[-300:])
+        print("[stderr tail]", result.stderr[-300:])
+        print("Files in tmp_dir:", os.listdir(tmp_dir))
+
+        if pdf_file.exists():
+            pdf_bytes = pdf_file.read_bytes()
+            print(f"[update_cv_for_job_node] PDF compilation succeeded → {pdf_file}")
+        else:
+            # Read .log if exists
+            log_path = tmp_dir / (tex_file.stem + ".log")
+            if log_path.exists():
+                print("\n[LaTeX LOG SNIPPET]\n", log_path.read_text()[-400:])
+            print(f"[update_cv_for_job_node] PDF not generated, check LaTeX log.")
+            pdf_bytes = None
+
     except Exception as e:
-        print(f"[update_cv_for_job_node] PDF compilation failed: {e}")
+        print(f"[update_cv_for_job_node] PDF compilation crashed: {e}")
         pdf_bytes = None
 
+    # ------------------ Update state ------------------
     state["updated_cv_text"] = latex_code
     state["updated_cv_pdf"] = pdf_bytes
-    state["assistant_message"] = f"CV customized for {job['title']} (PDF {'attached' if pdf_bytes else 'skipped'})."
+    state["assistant_message"] = (
+        f"CV customized for {job['title']} "
+        f"(PDF {'attached' if pdf_bytes else 'skipped'})."
+    )
     return state
+
 
 
 def send_email_node(state: AgentState) -> AgentState:

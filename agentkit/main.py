@@ -1,7 +1,7 @@
 # main.py
 from fastapi import FastAPI, UploadFile, Form
 from graph import build_graph
-from tools import get_jobs_for_embedding
+from utils import get_jobs_for_embedding
 
 app = FastAPI(title="LangGraph CV Assistant")
 workflow = build_graph()

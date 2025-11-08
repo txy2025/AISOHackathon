@@ -1,0 +1,13 @@
+[project]
+name = "hackathon_agent_template"
+version = "0.1.0"
+description = "Agent hackathon template"
+requires-python = ">=3.9"
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["agentkit*"]
+exclude = ["chroma_langchain_db*", "tests*", "examples*"]

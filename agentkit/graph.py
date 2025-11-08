@@ -181,16 +181,16 @@ def update_cv_for_job_node(state: AgentState) -> AgentState:
     print(latex_code)
     tmp_dir = Path(tempfile.mkdtemp())
     tex_file = tmp_dir / "cv_update_gemini.tex"
-    pdf_file = tmp_dir / "cv_updated.pdf"
+    pdf_file = tmp_dir / "cv_updated_gemini.pdf"
     print(tex_file)
     tex_file.write_text(latex_code, encoding="utf-8")
 
     try:
         subprocess.run(
-            ["pdflatex", "-interaction=nonstopmode", tex_file.name],
+            ["/usr/bin/pdflatex", "-interaction=nonstopmode", tex_file.name],
             cwd=tmp_dir,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             check=True,
         )
         pdf_bytes = pdf_file.read_bytes()

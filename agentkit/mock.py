@@ -9,5 +9,5 @@ Requirements:
 - Strong foundation in computer science, mathematics, and statistics
 - Experience in MLOps or distributed training systems is a plus.
 """,
-    "recruiter_email": "recruiter@google.com"
+    "recruiter_email": "kichujyotthis@gmail.com"
 }

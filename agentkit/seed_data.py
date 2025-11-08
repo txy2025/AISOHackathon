@@ -52,31 +52,31 @@ jobs = [
         "Machine Learning Engineer",
         "Google Research",
         "Develop AI systems, deploy models, and optimize distributed training pipelines.",
-        "recruiter@google.com",
+        "kichujyotthis@gmail.com",
     ),
     (
         "Data Scientist",
         "Meta AI",
         "Work on data pipelines, predictive modeling, and business insights for AI products.",
-        "jobs@meta.com",
+        "kichujyotthis@gmail.com",
     ),
     (
         "NLP Engineer",
         "Anthropic",
         "Build and improve conversational AI and LLM fine-tuning systems.",
-        "hiring@anthropic.com",
+        "kichujyotthis@gmail.com",
     ),
     (
         "AI Product Manager",
         "OpenAI",
         "Define AI-driven product roadmaps and bridge engineering and design.",
-        "recruiting@openai.com",
+        "kichujyotthis@gmail.com",
     ),
     (
         "Backend Developer",
         "DeepData",
         "Build scalable APIs for data analytics platforms.",
-        "hr@deepdata.ai",
+        "kichujyotthis@gmail.com",
     ),
 ]
 
@@ -99,7 +99,7 @@ Education: MSc Artificial Intelligence, Leiden University
 """
 parsed = {
     "name": "Tony Joy",
-    "email": "tony@example.com",
+    "email": "jyothisgiresan@gmail.com",
     "skills": ["Python", "FastAPI", "LangGraph", "UX Research", "Data Visualization"],
     "experience": [
         {"role": "Product Designer", "org": "Resolve to Save Lives", "years": "2021–Present"},

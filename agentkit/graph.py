@@ -156,21 +156,23 @@ def update_cv_for_job_node(state: AgentState) -> AgentState:
     cv_text = state["cv_text"]
     print(f"[update_cv_for_job_node] Customizing CV for job '{job['title']}'.")
     prompt = f"""
-You are an expert CV formatter.
-Given this CV and job description, rewrite the CV in professional LaTeX format.
-Keep it truthful but emphasize parts relevant to the job.
+        You are an expert CV formatter.
+        Given this CV and job description, rewrite the CV in professional LaTeX format.
+        Keep it truthful but emphasize parts relevant to the job.
 
-Job title: {job['title']}
-Company: {job['company']}
-Description: {job['description']}
+        Job title: {job['title']}
+        Company: {job['company']}
+        Description: {job['description']}
 
-Original CV:
-{cv_text}
+        Original CV:
+        {cv_text}
 
-Respond ONLY with valid LaTeX code (no explanations).
-"""
+        Respond ONLY with valid LaTeX code (no explanations).
+    """
+    print(prompt)
     response = safe_llm_invoke([{"role": "user", "content": prompt}])
     latex_code = response.content.strip()
+    print(latex_code)
     tmp_dir = Path(tempfile.mkdtemp())
     tex_file = tmp_dir / "cv_updated.tex"
     pdf_file = tmp_dir / "cv_updated.pdf"

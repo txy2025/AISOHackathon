@@ -1,8 +1,8 @@
 """
 langchain_workflow.py
 --------------------------------------------------
-LangChain workflow for CV parsing, job matching, CV tailoring, and emailing the recruiter
-with a tailored PDF attachment.
+LangChain workflow for CV parsing, job matching, CV tailoring,
+and emailing the recruiter with a tailored PDF attachment.
 """
 
 import os
@@ -10,18 +10,19 @@ import json
 import sqlite3
 import subprocess
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any
 
-from langchain.chains import LLMChain
+# ✅ Correct imports for LangChain 1.0+
+from langchain.chains.llm import LLMChain
 from langchain.prompts import PromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
-from modules.extract_cv_metadata_gemini import extract_metadata
-from modules.job_matching import JobMatching
+
 from modules.utils import (
-    save_cv_to_db,
     save_user_action,
     send_email_to_recruiter,
 )
+from modules.job_matching import JobMatching
+
 
 # -----------------------------------------------------------------------------
 # CONFIG
@@ -35,10 +36,12 @@ MODEL_NAME = "gemini-2.5-flash-lite"
 llm = ChatGoogleGenerativeAI(model=MODEL_NAME, google_api_key=GEMINI_API_KEY)
 JM = JobMatching(model_name=MODEL_NAME)
 
+
 # -----------------------------------------------------------------------------
 # HELPERS: DB QUERIES
 # -----------------------------------------------------------------------------
 def get_user_from_db(user_id: str) -> Dict[str, Any]:
+    """Fetch a user's latest CV record from the database."""
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
@@ -48,55 +51,48 @@ def get_user_from_db(user_id: str) -> Dict[str, Any]:
     )
     row = cursor.fetchone()
     conn.close()
+
     if not row:
         raise ValueError(f"User {user_id} not found in database")
+
     user = dict(row)
     cv_path = user.get("cv_file_path") or f"uploads/{user_id}_cv.pdf"
     return {
         "id": user["id"],
-        "name": user.get("name"),
-        "email": user.get("emails"),
-        "cv_path": cv_path,
+        "name": user.get("name", ""),
+        "email": user.get("emails", ""),
+        "phones": user.get("phones", ""),
+        "linkedin": user.get("linkedin", ""),
+        "github": user.get("github", ""),
         "summary": user.get("summary", ""),
-        "cv_text": user.get("raw_text", ""),
+        "skills": user.get("skills", ""),
+        "education": user.get("education", ""),
+        "experience": user.get("experience", ""),
+        "projects": user.get("projects", ""),
+        "languages": user.get("languages", ""),
+        "industries": user.get("industries", ""),
+        "raw_text": user.get("raw_text", ""),
+        "cv_path": cv_path,
     }
 
-
-def get_job_from_db(job_id: int) -> Dict[str, Any]:
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM job_listings WHERE id = ?", (job_id,))
-    row = cursor.fetchone()
-    conn.close()
-    if not row:
-        raise ValueError(f"Job {job_id} not found in database")
-    job = dict(row)
-    return {
-        "id": job["id"],
-        "title": job["title"],
-        "company": job["company"],
-        "description": job.get("description", ""),
-        "recruiter_email": job.get("recruiter_email"),
-    }
 
 # -----------------------------------------------------------------------------
 # CORE STEPS
 # -----------------------------------------------------------------------------
 def parse_cv_if_needed(user: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Load an existing CV record from the database and construct a unified text prompt
-    for the LLM to use. Does not re-parse or insert into the database.
+    Use the existing CV data from the database to construct a rich LLM prompt.
+    Does not re-parse or modify the database.
     """
 
     cv_path = user.get("cv_path")
     if not cv_path or not os.path.exists(cv_path):
-        print("⚠️ CV file not found, but proceeding with DB data only")
+        print("⚠️ CV file not found, proceeding with DB data only")
 
     if not user.get("raw_text"):
         raise ValueError(f"❌ No raw_text found in DB for user {user.get('id')}")
 
-    # Build a rich prompt string for the LLM using database fields
+    # Build unified prompt for LLM
     prompt_text = f"""
     Candidate Profile
     ------------------
@@ -131,7 +127,7 @@ def parse_cv_if_needed(user: Dict[str, Any]) -> Dict[str, Any]:
     {user.get('raw_text', '')}
     """
 
-    print("ℹ️ Using existing CV record from database for LLM prompt")
+    print("ℹ️ Loaded CV record from database for LLM prompt")
 
     return {
         "cv_parsed": {
@@ -142,13 +138,12 @@ def parse_cv_if_needed(user: Dict[str, Any]) -> Dict[str, Any]:
             "projects": user.get("projects", ""),
         },
         "cv_text": prompt_text.strip(),
-        "assistant_message": "✅ CV loaded from database and converted to LLM prompt",
+        "assistant_message": "✅ CV loaded from DB and formatted for LLM",
     }
 
 
-
 def tailor_cv(cv_text: str, job: Dict[str, Any], user_id: str) -> Path:
-    """Generate LaTeX → PDF for tailored CV and return PDF path."""
+    """Generate a LaTeX → PDF CV tailored for a specific job."""
     prompt_template = PromptTemplate(
         input_variables=["cv_text", "title", "company"],
         template="""
@@ -165,8 +160,9 @@ def tailor_cv(cv_text: str, job: Dict[str, Any], user_id: str) -> Path:
         The output must start with \\documentclass and end with \\end{{document}}.
         """,
     )
+
     latex_chain = LLMChain(llm=llm, prompt=prompt_template)
-    latex_code = latex_chain.run(cv_text=cv_text, title=job["title"], company=job["company"])
+    latex_code = latex_chain.invoke({"cv_text": cv_text, "title": job["title"], "company": job["company"]})["text"]
 
     out_dir = Path("generated_cvs")
     out_dir.mkdir(exist_ok=True)
@@ -174,8 +170,11 @@ def tailor_cv(cv_text: str, job: Dict[str, Any], user_id: str) -> Path:
     pdf_path = out_dir / f"user_{user_id}_job_{job['id']}.pdf"
     tex_path.write_text(latex_code, encoding="utf-8")
 
-    subprocess.run(["pdflatex", "-interaction=nonstopmode", tex_path.name],
-                   cwd=out_dir, capture_output=True)
+    subprocess.run(
+        ["pdflatex", "-interaction=nonstopmode", tex_path.name],
+        cwd=out_dir,
+        capture_output=True,
+    )
 
     if pdf_path.exists():
         print(f"✅ Tailored CV created for {job['title']}")
@@ -185,52 +184,65 @@ def tailor_cv(cv_text: str, job: Dict[str, Any], user_id: str) -> Path:
 
 
 def generate_cover_letter(job: Dict[str, Any]) -> str:
+    """Generate a concise 3-line cover letter using Gemini."""
     prompt = PromptTemplate(
         input_variables=["title", "company"],
-        template="Write a short 3-line cover letter for {title} at {company}.",
+        template="Write a short 3-line professional cover letter for {title} at {company}.",
     )
     cover_chain = LLMChain(llm=llm, prompt=prompt)
-    return cover_chain.run(title=job["title"], company=job["company"])
+    return cover_chain.invoke({"title": job["title"], "company": job["company"]})["text"]
+
 
 # -----------------------------------------------------------------------------
-# MAIN AGENT PIPELINE
+# MAIN PIPELINE
 # -----------------------------------------------------------------------------
 def run_langchain_pipeline(user_id: str, job_id: int):
-    """End-to-end pipeline that fetches user/job from DB, tailors CV, and emails PDF."""
-    # 1️⃣ Fetch user & job from DB
+    """
+    Full workflow:
+      1. Fetch user & job
+      2. Generate CV prompt
+      3. Tailor CV (LaTeX → PDF)
+      4. Generate cover letter
+      5. Send email with PDF attachment
+      6. Save user action
+    """
+
+    # 1️⃣ Fetch user (from DB)
     user = get_user_from_db(user_id)
+
+    # 2️⃣ Mock job (until DB job table is ready)
     job = {
-            "id": 5,
-            "title": "Research Engineer",
-            "company": "DeepMind",
-            "description": "Conduct applied ML research and build scalable experiments. Publish and collaborate with leading AI researchers.",
-            "recruiter_email": "",
-        }
+        "id": 5,
+        "title": "Research Engineer",
+        "company": "DeepMind",
+        "description": "Conduct applied ML research and build scalable experiments. Publish and collaborate with leading AI researchers.",
+        "recruiter_email": "kichujyothis@gmail.com",
+    }
 
-    # 2️⃣ Parse or load CV
+    # 3️⃣ Prepare CV prompt
     parsed = parse_cv_if_needed(user)
-    print(parsed)
+    print(parsed["assistant_message"])
 
-    # 3️⃣ Tailor CV for job
+    # 4️⃣ Generate tailored LaTeX → PDF
     pdf_path = tailor_cv(parsed["cv_text"], job, user_id)
-    print(pdf_path)
+    print(f"PDF path: {pdf_path}")
 
-    # 4️⃣ Generate cover letter
+    # 5️⃣ Generate cover letter
     cover_letter = generate_cover_letter(job)
-    print(cover_letter)
+    print("Cover Letter:\n", cover_letter)
 
-    # 5️⃣ Send email with PDF attachment
+    # 6️⃣ Email recruiter with PDF attached
     send_email_to_recruiter(
-        to_email="kichujyothis@gmail.com",
+        to_email=job["recruiter_email"],
         subject=f"Application for {job['title']} at {job['company']}",
         body=cover_letter,
         attachment_path=str(pdf_path),
     )
 
-    # 6️⃣ Log user action
+    # 7️⃣ Log action
     save_user_action(user_id, job_id, "apply")
 
-    # 7️⃣ Return output
+    # 8️⃣ Return summary
     result = {
         "assistant_message": f"✅ Application sent to {job['company']} with tailored CV.",
         "email_status": "sent",
@@ -238,5 +250,6 @@ def run_langchain_pipeline(user_id: str, job_id: int):
         "user": {"name": user["name"], "email": user["email"]},
         "job": {"title": job["title"], "company": job["company"]},
     }
+
     print(json.dumps(result, indent=2))
     return result

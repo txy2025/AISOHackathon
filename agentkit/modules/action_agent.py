@@ -184,14 +184,42 @@ def tailor_cv(cv_text: str, job: Dict[str, Any], user_id: str) -> Path:
         raise RuntimeError("⚠️ Failed to compile CV")
 
 
-def generate_cover_letter(job: Dict[str, Any]) -> str:
-    """Generate a concise 3-line cover letter using Gemini."""
+def generate_cover_letter(user: Dict[str, Any], job: Dict[str, Any]) -> str:
+    """
+    Generate a concise 3–5 line professional cover letter using Gemini,
+    personalized with both user and job information.
+    """
+
     prompt = PromptTemplate(
-        input_variables=["title", "company"],
-        template="Write a short 3-line professional cover letter for {title} at {company}.",
+        input_variables=["name", "summary", "experience", "skills", "title", "company", "description"],
+        template=(
+            "You are an expert career writer. Write a short, 3–5 line professional email-style cover letter.\n"
+            "Make it sound natural, confident, and aligned with the candidate’s profile and job description.\n\n"
+            "Candidate Name: {name}\n"
+            "Summary: {summary}\n"
+            "Experience: {experience}\n"
+            "Skills: {skills}\n\n"
+            "Job Title: {title}\n"
+            "Company: {company}\n"
+            "Job Description: {description}\n\n"
+            "Cover Letter:"
+        ),
     )
-    cover_chain = LLMChain(llm=llm, prompt=prompt)
-    return cover_chain.invoke({"title": job["title"], "company": job["company"]})["text"]
+
+    chain = prompt | llm
+    result = chain.invoke({
+        "name": user.get("name", ""),
+        "summary": user.get("summary", ""),
+        "experience": user.get("experience", ""),
+        "skills": user.get("skills", ""),
+        "title": job["title"],
+        "company": job["company"],
+        "description": job.get("description", ""),
+    })
+
+    cover_letter = result.content if hasattr(result, "content") else str(result)
+    print("✅ Generated personalized cover letter")
+    return cover_letter.strip()
 
 
 # -----------------------------------------------------------------------------
@@ -229,7 +257,7 @@ def run_langchain_pipeline(user_id: str, job_id: int):
     print(f"PDF path: {pdf_path}")
 
     # 5️⃣ Generate cover letter
-    cover_letter = generate_cover_letter(job)
+    cover_letter = generate_cover_letter(user, job)
     print("Cover Letter:\n", cover_letter)
 
     # 6️⃣ Email recruiter with PDF attached

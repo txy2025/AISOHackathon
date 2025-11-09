@@ -8,12 +8,16 @@ from modules.extract_cv_metadata_gemini import extract_metadata
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from modules.agent import get_job_recommendation
+from modules.job_matching import JobMatching
 
 
 
 
 app = FastAPI(title="LangGraph CV Assistant")
 app.include_router(google_router)
+
+jm = JobMatching(model_name="gemini-2.5-flash-lite", job_list_path="datastore/joblist_clean_for_rag.csv", db_path ="cv_data.db")
+jm.load_joblist()
 
 app.add_middleware(
     CORSMiddleware,

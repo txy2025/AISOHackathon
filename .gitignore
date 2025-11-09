@@ -4,3 +4,4 @@ __pycache__/
 google_client_secret.json
 *.db
 generated_cvs/
+*.pdf

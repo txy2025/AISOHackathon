@@ -14,10 +14,10 @@ app = FastAPI(title="LangGraph CV Assistant")
 # ✅ Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # or your React URL
+    allow_origins=["*"],       # ✅ Allow all domains
     allow_credentials=True,
-    allow_methods=["*"],  # GET, POST, etc.
-    allow_headers=["*"],  # Authorization, Content-Type, etc.
+    allow_methods=["*"],       # ✅ Allow all HTTP methods (GET, POST, etc.)
+    allow_headers=["*"],       # ✅ Allow all headers
 )
 
 # ✅ Include routers

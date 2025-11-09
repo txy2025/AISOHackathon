@@ -18,7 +18,7 @@ from PyPDF2 import PdfReader
 import docx
 
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.schema import HumanMessage
+from langchain.messages import HumanMessage
 
 # ======================================================
 # CONFIGURATION

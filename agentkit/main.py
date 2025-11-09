@@ -7,6 +7,7 @@ from modules.google_auth import router as google_router
 from modules.extract_cv_metadata_gemini import extract_metadata
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from modules.agent import get_job_recommendation
 
 
 
@@ -21,6 +22,7 @@ app.add_middleware(
     allow_methods=["*"],        # All HTTP methods
     allow_headers=["*"],        # All headers
 )
+# workflow = build_graph()
 
 SAVE_DIR = "saved_cvs"
 os.makedirs(SAVE_DIR, exist_ok=True)
@@ -37,7 +39,7 @@ async def upload_cv(user_id: str = Form(...), file: UploadFile = None):
         shutil.copyfileobj(file.file, f)
 
     # --- Step 2: Extract metadata using Gemini ---
-    metadata = extract_metadata(file_path)
+    _ = extract_metadata(file_path)
 
     return JSONResponse(
             content={
@@ -52,30 +54,30 @@ async def upload_cv(user_id: str = Form(...), file: UploadFile = None):
 @app.get("/show_jobs")
 def show_jobs(user_id: str):
     """Show top matching jobs (mocked fallback)."""
-    jobs = get_jobs_for_embedding([0.1] * 32, top_k=3)
-    return {"jobs": jobs}
+    job_list=get_job_recommendation(1)
+    return job_list
 
 
-@app.post("/action")
-def action(user_id: str = Form(...), job_id: int = Form(...), action: str = Form(...)):
-    """User applies/likes/saves a job."""
-    mock_job = {
-        "id": job_id,
-        "title": "Machine Learning Engineer",
-        "company": "Google Research",
-        "description": "Develop and deploy LLM systems at scale.",
-        "recruiter_email": "kichujyothis@gmail.com",
-    }
+# @app.post("/action")
+# def action(user_id: str = Form(...), job_id: int = Form(...), action: str = Form(...)):
+#     """User applies/likes/saves a job."""
+#     mock_job = {
+#         "id": job_id,
+#         "title": "Machine Learning Engineer",
+#         "company": "Google Research",
+#         "description": "Develop and deploy LLM systems at scale.",
+#         "recruiter_email": "kichujyothis@gmail.com",
+#     }
 
-    state = {
-        "user_id": user_id,
-        "selected_job": mock_job,
-        "user_action": action,
-        "cv_text": "Existing CV text for user",
-    }
+#     state = {
+#         "user_id": user_id,
+#         "selected_job": mock_job,
+#         "user_action": action,
+#         "cv_text": "Existing CV text for user",
+#     }
 
-    result = workflow.invoke(state)
-    return {
-        "message": result.get("assistant_message", ""),
-        "email_status": result.get("email_status"),
-    }
+#     # result = workflow.invoke(state)
+#     return {
+#         "message": result.get("assistant_message", ""),
+#         "email_status": result.get("email_status"),
+#     }

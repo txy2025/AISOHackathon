@@ -1,12 +1,12 @@
 """
 agentkit_extract_metadata_cv_gemini_summary.py
 ----------------------------------------------
-Local CV metadata extractor using Google Gemini (1.5 Pro or Flash).
+Local CV metadata extractor using LangChain + Google Gemini (via langchain_google_genai).
 
 Outputs:
 1️⃣ profile_<name>.json  → structured metadata
 2️⃣ summary_<name>.txt   → ~100-word professional summary
-3️⃣ Saves metadata & summary into SQLite DB (cv_data.db)
+3️⃣ Saves metadata & summary into SQLite DB (assistant.db)
 """
 
 import os
@@ -16,26 +16,28 @@ import sqlite3
 from datetime import datetime
 from PyPDF2 import PdfReader
 import docx
-import google.generativeai as genai
+
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain.schema import HumanMessage
 
 # ======================================================
 # CONFIGURATION
 # ======================================================
 OUTPUT_DIR = os.getenv("OUTPUT_DIR", "./")
-DB_PATH = os.getenv("DB_PATH", "./cv_data.db")
+DB_PATH = os.getenv("DB_PATH", "./assistant.db")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 if not GEMINI_API_KEY:
     raise EnvironmentError("❌ Please set GEMINI_API_KEY in your environment.")
 
-genai.configure(api_key=GEMINI_API_KEY)
+# Initialize model
+model = ChatGoogleGenerativeAI(model=GEMINI_MODEL, google_api_key=GEMINI_API_KEY)
 
 # ======================================================
 # DATABASE SETUP
 # ======================================================
 def init_db():
-    """Create SQLite table if not exists."""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
@@ -66,10 +68,8 @@ def init_db():
 # TEXT EXTRACTION
 # ======================================================
 def extract_text(file_path: str) -> str:
-    """Extract raw text from PDF or DOCX."""
     _, ext = os.path.splitext(file_path)
     text = ""
-
     if ext.lower() == ".pdf":
         reader = PdfReader(file_path)
         for page in reader.pages:
@@ -81,14 +81,12 @@ def extract_text(file_path: str) -> str:
         text = "\n".join(p.text for p in doc.paragraphs)
     else:
         raise ValueError(f"Unsupported file type: {ext}")
-
     return re.sub(r"\s+", " ", text.strip())
 
 # ======================================================
 # CONTACT INFO EXTRACTION
 # ======================================================
 def extract_contact_info(text: str) -> dict:
-    """Regex-based contact extraction."""
     return {
         "emails": re.findall(r'[\w\.-]+@[\w\.-]+', text),
         "phones": re.findall(r'\+?\d[\d\s\-]{7,}\d', text),
@@ -98,11 +96,10 @@ def extract_contact_info(text: str) -> dict:
     }
 
 # ======================================================
-# GEMINI ENRICHMENT
+# GEMINI ENRICHMENT (LangChain)
 # ======================================================
 def enrich_with_gemini(text: str, contact_info: dict) -> dict:
-    """Send extracted text to Gemini and ensure structured JSON output."""
-    model = genai.GenerativeModel(GEMINI_MODEL)
+    """Send extracted text to Gemini via LangChain and ensure JSON output."""
     prompt = f"""
     You are a professional CV parser and data extractor.
     Read the following resume text and return a JSON object with this structure:
@@ -130,12 +127,10 @@ def enrich_with_gemini(text: str, contact_info: dict) -> dict:
 
     Only output valid JSON — no explanations, no markdown, nothing outside the braces.
     """
-
     try:
-        response = model.generate_content(prompt)
-        raw_output = response.text.strip()
-        start = raw_output.find("{")
-        end = raw_output.rfind("}") + 1
+        response = model.invoke([HumanMessage(content=prompt)])
+        raw_output = response.content.strip()
+        start, end = raw_output.find("{"), raw_output.rfind("}") + 1
         json_str = raw_output[start:end]
         parsed = json.loads(json_str)
         return parsed
@@ -144,11 +139,9 @@ def enrich_with_gemini(text: str, contact_info: dict) -> dict:
         return {"raw_text": text, "contact_info": contact_info}
 
 # ======================================================
-# GEMINI SUMMARY GENERATION
+# GEMINI SUMMARY GENERATION (LangChain)
 # ======================================================
 def summarize_applicant(metadata: dict, text: str) -> str:
-    """Generate a ~100-word summary of the applicant."""
-    model = genai.GenerativeModel(GEMINI_MODEL)
     structured_context = json.dumps({
         "name": metadata.get("name", ""),
         "summary": metadata.get("summary", ""),
@@ -172,10 +165,9 @@ def summarize_applicant(metadata: dict, text: str) -> str:
     The summary should sound natural, positive, and highlight strengths, expertise, and key industries.
     Output only the summary paragraph.
     """
-
     try:
-        response = model.generate_content(prompt)
-        summary_text = response.text.strip()
+        response = model.invoke([HumanMessage(content=prompt)])
+        summary_text = response.content.strip()
         return summary_text or "Summary unavailable."
     except Exception as e:
         print(f"⚠️ Gemini summary error: {e}")
@@ -185,11 +177,8 @@ def summarize_applicant(metadata: dict, text: str) -> str:
 # SAVE TO SQLITE
 # ======================================================
 def save_to_db(metadata: dict, summary: str):
-    """Insert the parsed CV metadata and summary into SQLite DB."""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-
-    # Insert all key fields safely
     cursor.execute(
         """
         INSERT OR REPLACE INTO cv_profiles (
@@ -216,7 +205,6 @@ def save_to_db(metadata: dict, summary: str):
             datetime.utcnow().isoformat(),
         ),
     )
-
     conn.commit()
     conn.close()
     print("✅ Metadata and summary inserted into SQLite database.")
@@ -225,13 +213,11 @@ def save_to_db(metadata: dict, summary: str):
 # MAIN PIPELINE
 # ======================================================
 def extract_metadata(file_path: str) -> dict:
-    """End-to-end metadata extraction pipeline."""
     print(f"📄 Processing: {file_path}")
     init_db()
     text = extract_text(file_path)
     contact_info = extract_contact_info(text)
     metadata = enrich_with_gemini(text, contact_info)
-
     metadata.setdefault("contact_info", contact_info)
     metadata.setdefault("raw_text", text)
 
@@ -243,27 +229,13 @@ def extract_metadata(file_path: str) -> dict:
         json.dump(metadata, f, indent=2, ensure_ascii=False)
 
     summary = summarize_applicant(metadata, text)
-
     summary_path = os.path.join(OUTPUT_DIR, f"summary_{base_name}.txt")
     with open(summary_path, "w", encoding="utf-8") as f:
         f.write(summary)
 
-    # Save both metadata & summary to DB
     save_to_db(metadata, summary)
 
     print(f"✅ Profile saved → {json_path}")
     print(f"✅ Summary saved → {summary_path}")
     return metadata
-
-# ======================================================
-# CLI ENTRY POINT
-# ======================================================
-if __name__ == "__main__":
-    import sys
-    if len(sys.argv) < 2:
-        print("Usage: python agentkit_extract_metadata_cv_gemini_summary.py <cv_file>")
-        sys.exit(1)
-
-    file_path = sys.argv[1]
-    extract_metadata(file_path)
 

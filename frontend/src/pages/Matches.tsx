@@ -73,10 +73,10 @@ const Matches = () => {
 
   useEffect(() => {
     // Use a valid UUID for demo user (without authentication)
-    const demoUserId = '00000000-0000-0000-0000-000000000001';
-    setUserId(demoUserId);
-    loadData(demoUserId).then(() => fetchExternalJobs(demoUserId));
-    loadData(demoUserId);
+  const demoUserId = '00000000-0000-0000-0000-000000000001';
+  setUserId(demoUserId);
+
+  loadData(demoUserId).then(() => fetchExternalJobs('1')); // external API uses 
     
 
     // Show "New Jobs Found" notification after 1 minute
@@ -191,51 +191,50 @@ const Matches = () => {
       setIsLoading(false);
     }
   };
-  const fetchExternalJobs = async (uid: string) => {
-    try {
-      const response = await fetch(`http://78.141.223.232:8000/show_jobs?user_id=${uid}`);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const externalJobs = await response.json();
+const fetchExternalJobs = async (uid: string) => {
+  try {
+    const response = await fetch(`http://78.141.223.232:8000/show_jobs?user_id=${uid}`);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    
+    const result = await response.json();
+    const recommendations = result.recommendations || [];
 
-      // Ensure structure is compatible with ScrapedJob[]
-      const mappedJobs: ScrapedJob[] = externalJobs.map((job: any, i: number) => ({
-        id: job.id?.toString() || `ext-${i}`,
-        job_id: job.job_id?.toString() || `ext-${i}`,
-        title: job.title || "Untitled Role",
-        company: job.company || "Unknown Company",
-        location: job.location || "Remote",
-        salary: job.salary || "Competitive salary",
-        description: job.description || "",
-        match_score: job.match_score || Math.floor(Math.random() * 20 + 80),
-        source_url: job.source_url || "",
-        scraped_at: new Date().toISOString(),
-      }));
+    // Map API fields to ScrapedJob format
+    const mappedJobs: ScrapedJob[] = recommendations.map((job: any, i: number) => ({
+      id: `ext-${i}`,
+      job_id: `ext-${i}`,
+      title: job.JobTitle || "Unknown Role",
+      company: job.Company || "Unknown Company",
+      location: job.Remote?.toLowerCase().includes("not") ? "On-site" : "Remote",
+      salary: job.Salary || "Not specified",
+      description: job.Responsibility || "",
+      match_score: job["Matching Score"] || 80,
+      source_url: "", // API does not provide it
+      scraped_at: new Date().toISOString(),
+    }));
 
-      // Append or merge (deduplicate by job_id)
-      setScrapedJobs(prev => {
-        const combined = [...prev];
-        mappedJobs.forEach(job => {
-          if (!combined.find(j => j.job_id === job.job_id)) {
-            combined.push(job);
-          }
-        });
-        return combined.sort((a, b) => b.match_score - a.match_score);
-      });
+    // Append new jobs to scrapedJobs, avoiding duplicates
+    setScrapedJobs(prev => {
+      const existingIds = new Set(prev.map(j => j.job_id));
+      const newOnes = mappedJobs.filter(j => !existingIds.has(j.job_id));
+      return [...prev, ...newOnes].sort((a, b) => b.match_score - a.match_score);
+    });
 
-      toast({
-        title: "New jobs loaded 🚀",
-        description: `${mappedJobs.length} jobs fetched from external source.`,
-        duration: 5000,
-      });
-    } catch (err) {
-      console.error("Error fetching external jobs:", err);
-      toast({
-        title: "Error loading new jobs",
-        description: "Could not fetch from external API.",
-        variant: "destructive",
-      });
-    }
-  };
+    toast({
+      title: "✨ AI Recommendations Loaded",
+      description: `Found ${mappedJobs.length} personalized jobs for you.`,
+      duration: 5000,
+    });
+  } catch (err) {
+    console.error("Error fetching external jobs:", err);
+    toast({
+      title: "Error loading new jobs",
+      description: "Could not fetch recommendations from AI API.",
+      variant: "destructive",
+    });
+  }
+};
+
 
   const handleLikeJob = async (job: JobMatch) => {
     if (!userId) return;

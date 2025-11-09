@@ -158,9 +158,12 @@ def tailor_cv(cv_text: str, job: Dict[str, Any], user_id: str) -> Path:
         The output must start with \\documentclass and end with \\end{{document}}.
         """,
     )
+    print(prompt_template)
+    chain = prompt_template | llm
+    result = chain.invoke({"cv_text": cv_text, "title": job["title"], "company": job["company"]})
+    print(result)
+    latex_code = result.content if hasattr(result, "content") else str(result)
 
-    latex_chain = LLMChain(llm=llm, prompt=prompt_template)
-    latex_code = latex_chain.invoke({"cv_text": cv_text, "title": job["title"], "company": job["company"]})["text"]
 
     out_dir = Path("generated_cvs")
     out_dir.mkdir(exist_ok=True)

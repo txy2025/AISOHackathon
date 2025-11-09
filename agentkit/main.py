@@ -9,6 +9,8 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from modules.agent import get_job_recommendation
 from modules.job_matching import JobMatching
+import json
+
 
 
 
@@ -55,8 +57,36 @@ async def upload_cv(user_id: str = Form(...), file: UploadFile = None):
 @app.get("/show_jobs")
 def show_jobs(user_id: str):
     """Show top matching jobs (mocked fallback)."""
-    job_list=get_job_recommendation(1)
-    return job_list
+    try:
+        raw_result = get_job_recommendation(user_id)
+        # Try parsing if it's still a string
+        if isinstance(raw_result, str):
+            raw_result = raw_result.strip().strip("`")
+            if "```json" in raw_result:
+                raw_result = raw_result.split("```json")[-1].split("```")[0]
+            parsed = json.loads(raw_result)
+        else:
+            parsed = raw_result
+
+        return JSONResponse(
+            content={
+                "status": "ok",
+                "user_id": user_id,
+                "recommendations": parsed,
+            },
+            status_code=200
+        )
+
+    except Exception as e:
+        return JSONResponse(
+            content={
+                "status": "error",
+                "error": str(e)
+            },
+            status_code=500
+        )
+
+
 
 
 # @app.post("/action")

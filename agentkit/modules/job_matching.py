@@ -201,6 +201,7 @@ class JobMatching:
 
     def get_user_info(self,user_id:int):
         with sqlite3.connect(self.db_path) as conn:
+            print(self.db_path)
             cur = conn.execute("SELECT summary FROM cv_profiles WHERE id = ?", (user_id,))
             row = cur.fetchone()
             summary = row[0] if row else None

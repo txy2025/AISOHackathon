@@ -79,3 +79,17 @@ uvicorn==0.38.0
 xxhash==3.6.0
 yarl==1.22.0
 zstandard==0.25.0
+
+
+
+# Below are dependencies for the cv parsing
+PyPDF2 
+python-docx
+
+# torch==2.4.1
+# torchvision==0.19.1
+# torchaudio==2.4.1
+# sentence-transformers==5.1.2
+# transformers==4.57.1
+openai
+google-generativeai>= 0.8.5

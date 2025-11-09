@@ -1,8 +1,8 @@
 import os
 import shutil
 from fastapi import FastAPI, UploadFile, Form
-from modules.graph import build_graph
-from modules.utils import get_jobs_for_embedding
+# from modules.graph import build_graph
+# from modules.utils import get_jobs_for_embedding
 from modules.google_auth import router as google_router
 from modules.extract_cv_metadata_gemini import extract_metadata
 from fastapi.responses import JSONResponse

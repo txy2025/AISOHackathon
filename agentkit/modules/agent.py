@@ -74,6 +74,7 @@ def get_job_recommendation(user_id:int):
     Your response must be a **valid JSON list** of four job objects.
     Focus on clarity, concise reasoning, and accurate matching.
     """
+    print(system_prompt)
 
     agent = create_agent(
         model="google_genai:gemini-2.5-flash-lite",
@@ -93,6 +94,7 @@ def get_job_recommendation(user_id:int):
 
     messages = [{"role": "user", "content": f"user_id:{user_id}"}]
     resp = agent.invoke({"messages": messages})
+    print(resp["messages"][-1].content)
     return resp["messages"][-1].content
 
     # final_message = None
@@ -108,8 +110,3 @@ def get_job_recommendation(user_id:int):
     # if final_message:
     #     print(final_message.content)
     #     return final_message.content
-
-
-if __name__ == "__main__":
-    job_list=get_job_recommendation(1)
-    print(job_list)

@@ -1,3 +1,4 @@
+import datetime
 from email.mime.application import MIMEApplication
 import os
 import json
@@ -47,19 +48,34 @@ def _ensure_db():
 
 
 # ---------- CV Management ----------
-def save_cv_to_db(user_id: str, cv_text: str, parsed: Dict[str, Any], embedding: List[float]) -> int:
-    """Save CV text, structured data, and embedding."""
-    _ensure_db()
+def save_user_action(user_id: str, job: dict, action: str):
+    """Save a user action (apply, like, save, etc.) into SQLite with auto-table creation."""
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
+
+    # 1️⃣ Create the table if it doesn't exist
     cur.execute(
-        "INSERT INTO cvs (user_id, text, parsed_json, embedding) VALUES (?, ?, ?, ?)",
-        (user_id, cv_text, json.dumps(parsed), json.dumps(embedding)),
+        """
+        CREATE TABLE IF NOT EXISTS user_actions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT,
+            job_id INTEGER,
+            action TEXT,
+            timestamp TEXT
+        )
+        """
     )
+
+    # 2️⃣ Insert the record
+    cur.execute(
+        "INSERT INTO user_actions (user_id, job_id, action, timestamp) VALUES (?, ?, ?, ?)",
+        (user_id, job["id"], action, datetime.utcnow().isoformat()),
+    )
+
     conn.commit()
-    cv_id = cur.lastrowid
     conn.close()
-    return cv_id
+    print(f"✅ Logged action '{action}' for user {user_id} on job {job['id']}")
+
 
 
 # ---------- Job Search ----------

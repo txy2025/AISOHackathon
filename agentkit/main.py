@@ -57,11 +57,14 @@ async def upload_cv(user_id: str = Form(...), file: UploadFile = None):
 @app.get("/show_jobs")
 def show_jobs(user_id: str):
     """Show top matching jobs (mocked fallback)."""
+    import re
     try:
         raw_result = get_job_recommendation(user_id)
         # Try parsing if it's still a string
         if isinstance(raw_result, str):
-            raw_result = raw_result.strip().strip("`")
+            cleaned = re.sub(r"^```json|```$", "", raw_result.strip(), flags=re.MULTILINE).strip()
+            cleaned = cleaned.replace("```", "").strip()
+
             if "```json" in raw_result:
                 raw_result = raw_result.split("```json")[-1].split("```")[0]
             parsed = json.loads(raw_result)

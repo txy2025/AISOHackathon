@@ -1,21 +1,36 @@
 import os
 import shutil
 from fastapi import FastAPI, UploadFile, Form
+from fastapi.middleware.cors import CORSMiddleware
+
 from modules.graph import build_graph
 from modules.utils import get_jobs_for_embedding
 from modules.google_auth import router as google_router
 from modules.extract_cv_metadata_gemini import extract_metadata
 
 
-
 app = FastAPI(title="LangGraph CV Assistant")
+
+# ✅ Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # or your React URL
+    allow_credentials=True,
+    allow_methods=["*"],  # GET, POST, etc.
+    allow_headers=["*"],  # Authorization, Content-Type, etc.
+)
+
+# ✅ Include routers
 app.include_router(google_router)
 
+# ✅ Initialize graph workflow
 workflow = build_graph()
 
 SAVE_DIR = "saved_cvs"
 os.makedirs(SAVE_DIR, exist_ok=True)
 
+
+# ---------- ROUTES ----------
 
 @app.post("/upload_cv")
 async def upload_cv(user_id: str = Form(...), file: UploadFile = None):
@@ -30,10 +45,8 @@ async def upload_cv(user_id: str = Form(...), file: UploadFile = None):
     # --- Step 2: Extract metadata using Gemini ---
     metadata = extract_metadata(file_path)
 
-    # --- Step 4: Return everything ---
-    return {
-        "message": "CV processed successfully.",
-    }
+    # --- Step 3: Return summary
+    return {"message": "CV processed successfully.", "metadata": metadata}
 
 
 @app.get("/show_jobs")

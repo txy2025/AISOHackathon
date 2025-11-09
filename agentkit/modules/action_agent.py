@@ -269,7 +269,7 @@ def run_langchain_pipeline(user_id: str, job_id: int):
     )
 
     # 7️⃣ Log action
-    save_user_action(user_id, 5, "apply")
+    # save_user_action(user_id, 5, "apply")
 
     # 8️⃣ Return summary
     result = {

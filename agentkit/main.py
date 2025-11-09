@@ -3,6 +3,7 @@ import shutil
 from fastapi import FastAPI, UploadFile, Form
 # from modules.graph import build_graph
 # from modules.utils import get_jobs_for_embedding
+from modules.action_agent import run_langchain_pipeline
 from modules.google_auth import router as google_router
 from modules.extract_cv_metadata_gemini import extract_metadata
 from fastapi.responses import JSONResponse
@@ -10,9 +11,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from modules.agent import get_job_recommendation
 from modules.job_matching import JobMatching
 import json
-
-
-
 
 
 app = FastAPI(title="LangGraph CV Assistant")
@@ -91,27 +89,12 @@ def show_jobs(user_id: str):
 
 
 
-
-# @app.post("/action")
-# def action(user_id: str = Form(...), job_id: int = Form(...), action: str = Form(...)):
-#     """User applies/likes/saves a job."""
-#     mock_job = {
-#         "id": job_id,
-#         "title": "Machine Learning Engineer",
-#         "company": "Google Research",
-#         "description": "Develop and deploy LLM systems at scale.",
-#         "recruiter_email": "kichujyothis@gmail.com",
-#     }
-
-#     state = {
-#         "user_id": user_id,
-#         "selected_job": mock_job,
-#         "user_action": action,
-#         "cv_text": "Existing CV text for user",
-#     }
-
-#     # result = workflow.invoke(state)
-#     return {
-#         "message": result.get("assistant_message", ""),
-#         "email_status": result.get("email_status"),
-#     }
+@app.post("/action")
+def action(user_id: str = Form(...), job_id: int = Form(...), action: str = Form(...)):
+    """User applies/likes/saves a job."""
+    result = run_langchain_pipeline(user_id, job_id)
+    return {
+        "message": result.get("assistant_message", ""),
+        "email_status": result.get("email_status"),
+        "pdf_path": result.get("pdf_path"),
+    }

@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Dict, Any
 
 # ✅ Correct imports for LangChain 1.0+
-from langchain.chains.llm import LLMChain
+from langchain_classic.chains import LLMChain
 from langchain.prompts import PromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
 

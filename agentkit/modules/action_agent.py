@@ -21,7 +21,6 @@ from modules.utils import (
     save_user_action,
     send_email_to_recruiter,
 )
-from modules.job_matching import JobMatching
 
 
 # -----------------------------------------------------------------------------
@@ -34,7 +33,6 @@ if not GEMINI_API_KEY:
 
 MODEL_NAME = "gemini-2.5-flash-lite"
 llm = ChatGoogleGenerativeAI(model=MODEL_NAME, google_api_key=GEMINI_API_KEY)
-JM = JobMatching(model_name=MODEL_NAME)
 
 
 # -----------------------------------------------------------------------------

@@ -26,7 +26,7 @@ from modules.utils import (
 # -----------------------------------------------------------------------------
 # CONFIG
 # -----------------------------------------------------------------------------
-DB_PATH = "database.db"
+DB_PATH = "assistant.db"
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 if not GEMINI_API_KEY:
     raise EnvironmentError("❌ GEMINI_API_KEY not found in environment.")

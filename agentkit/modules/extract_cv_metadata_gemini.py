@@ -199,7 +199,7 @@ def save_to_db(metadata: dict, summary: str):
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
-            record_id,
+            1,
             metadata.get("name", ""),
             ", ".join(metadata.get("contact_info", {}).get("emails", [])),
             ", ".join(metadata.get("contact_info", {}).get("phones", [])),

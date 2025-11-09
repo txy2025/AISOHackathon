@@ -6,7 +6,7 @@ from langchain.chat_models import init_chat_model
 import sqlite3
 
 # Create a persistent instance of JobMatching so it reuses the Chroma DB
-jm = JobMatching(model_name="gemini-2.5-flash-lite", job_list_path="datastore/joblist_clean_for_rag.csv", db_path ="cv_data.db")
+jm = JobMatching(model_name="gemini-2.5-flash-lite", job_list_path="datastore/joblist_clean_for_rag.csv", db_path ="assistant.db")
 jm.load_joblist()
 
 @tool("search_jobs", return_direct=False)

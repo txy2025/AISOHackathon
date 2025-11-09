@@ -6,6 +6,7 @@ from modules.utils import get_jobs_for_embedding
 from modules.google_auth import router as google_router
 from modules.extract_cv_metadata_gemini import extract_metadata
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 
 
 
@@ -13,7 +14,13 @@ from fastapi.responses import JSONResponse
 app = FastAPI(title="LangGraph CV Assistant")
 app.include_router(google_router)
 
-workflow = build_graph()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],        # All origins
+    allow_credentials=False,    # Credentials not allowed with '*'
+    allow_methods=["*"],        # All HTTP methods
+    allow_headers=["*"],        # All headers
+)
 
 SAVE_DIR = "saved_cvs"
 os.makedirs(SAVE_DIR, exist_ok=True)

@@ -12,13 +12,13 @@ from modules.extract_cv_metadata_gemini import extract_metadata
 app = FastAPI(title="LangGraph CV Assistant")
 
 # ✅ Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],       # ✅ Allow all domains
-    allow_credentials=False,
-    allow_methods=["*"],       # ✅ Allow all HTTP methods (GET, POST, etc.)
-    allow_headers=["*"],       # ✅ Allow all headers
-)
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=["*"],       # ✅ Allow all domains
+#     allow_credentials=False,
+#     allow_methods=["*"],       # ✅ Allow all HTTP methods (GET, POST, etc.)
+#     allow_headers=["*"],       # ✅ Allow all headers
+# )
 
 # ✅ Include routers
 app.include_router(google_router)

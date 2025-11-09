@@ -1,0 +1,97 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+
+# Node dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+coverage/
+
+# Local environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Editor / IDE
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+Thumbs.db
+
+# Cache
+.cache/
+.vite/
+vite.config.timestamp-*
+vite.cache/
+.parcel-cache/
+.eslintcache
+
+# Temporary / Misc
+*.log
+*.tmp
+*.bak
+*.tgz
+*.tsbuildinfo
+
+# Testing
+jest-stare/
+coverage-final.json
+jest-html-reporters-*.html
+
+# Storybook
+storybook-static/
+
+# Supabase / Firebase
+.supabase/
+.firebase/
+
+# Deployment / Hosting
+.vercel/
+.netlify/
+
+# Optional: Lock files (if you prefer to avoid committing)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml

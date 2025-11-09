@@ -1,0 +1,4 @@
+project_id = "ashbkffzbvqaquoztsvs"
+
+[functions.scrape-jobs]
+schedule = "0 * * * *"  # Run every hour at minute 0

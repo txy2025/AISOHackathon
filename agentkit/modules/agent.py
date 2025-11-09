@@ -49,7 +49,7 @@ def get_job_recommendation(user_id:int):
     #llm=init_chat_model("gemini-2.5-flash-lite", temperature=0.3)
     # llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", temperature=0)
 
-    tools = [search_jobs,get_user_cv_summary]
+    # tools = [search_jobs, get_user_cv_summary]
 
     system_prompt = """
     You are an intelligent Job Search Agent.
@@ -80,7 +80,7 @@ def get_job_recommendation(user_id:int):
         model="google_genai:gemini-2.5-flash-lite",
         #model="openai:gpt-5-nano",
         system_prompt=system_prompt,
-        tools=tools,
+        # tools=tools,
     )
 
     #query="Amalia Stuger is a highly accomplished and results-driven professional with dual Master's degrees in Artificial Intelligence and Business IT & Management, following a strong BSc in AI with Honours. Equipped with expertise in Python, MATLAB, and SQL, Amalia brings practical experience in developing digital and technical skills, having led robotics and programming workshops for youth. Her role as a Teaching Assistant further highlights her ability to guide students in complex AI concepts, coding, and robotics. Additionally, her entrepreneurial background as a Salon Owner demonstrates robust leadership in business operations, marketing, and client relations, showcasing a unique blend of technical proficiency, problem-solving, and strategic thinking"

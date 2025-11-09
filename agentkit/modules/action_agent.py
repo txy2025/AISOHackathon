@@ -262,7 +262,7 @@ def run_langchain_pipeline(user_id: str, job_id: int):
 
     # 6️⃣ Email recruiter with PDF attached
     send_email_to_recruiter(
-        to_email=job["recruiter_email"],
+        to=job["recruiter_email"],
         subject=f"Application for {job['title']} at {job['company']}",
         body=cover_letter,
         attachment_path=str(pdf_path),

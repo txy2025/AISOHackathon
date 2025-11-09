@@ -1,3 +1,4 @@
+from email.mime.application import MIMEApplication
 import os
 import json
 import sqlite3
@@ -120,7 +121,7 @@ def save_user_action(user_id: str, job: Dict[str, Any], action: str) -> None:
 
 
 # ---------- Email Sending ----------
-def send_email_to_recruiter(to: str, subject: str, body: str) -> str:
+def send_email_to_recruiter(to: str, subject: str, body: str, attachment_path: str) -> str:
     """
     Send email to recruiter.
     Uses Gmail SMTP if credentials are configured, otherwise just logs to console.
@@ -136,7 +137,21 @@ def send_email_to_recruiter(to: str, subject: str, body: str) -> str:
     msg["From"] = sender_email
     msg["To"] = to
     msg["Subject"] = subject
-    msg.attach(MIMEText(body, "plain"))
+    msg.attach(MIMEText(body, "plain"))\
+
+    # ---- 2️⃣ Add the PDF attachment if it exists ----
+    if attachment_path and os.path.exists(attachment_path):
+        with open(attachment_path, "rb") as f:
+            part = MIMEApplication(f.read(), _subtype="pdf")
+            part.add_header(
+                "Content-Disposition",
+                f'attachment; filename="{os.path.basename(attachment_path)}"',
+            )
+            msg.attach(part)
+        print(f"📎 Attached file: {attachment_path}")
+    else:
+        print("⚠️ No valid attachment found, skipping file attach")
+
 
     try:
         with smtplib.SMTP("smtp.gmail.com", 587) as server:

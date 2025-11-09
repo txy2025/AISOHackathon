@@ -15,6 +15,32 @@ load_dotenv(override=True)
 
 
 class JobMatching:
+    """
+    A class for semantic job search and summarization using LangChain, Chroma, and LLMs.
+
+    Methods
+    -------
+    __init__(model_name, job_list_path)
+        Initialize the job matcher with model and data path.
+
+    row_to_doc(row)
+        Convert a CSV row into a LangChain Document for embedding.
+
+    load_joblist(rebuild=False)
+        Load or build the Chroma vector store.
+        - If `rebuild=False` and the DB exists, reuse it.
+        - If `rebuild=True`, re-index the CSV and overwrite the DB.
+
+    format_full_row(row)
+        Format one job entry into readable text.
+
+    refine_result(results)
+        Summarize a list of job descriptions using the specified model (e.g., Gemini or GPT).
+
+    exec_query(qry_str, top_k=5)
+        Search for the top-k semantically similar jobs given a query string.
+        Returns a list of formatted job descriptions.
+    """
     def __init__(self, model_name: str, job_list_path: str, default_k: int = 5) -> None:
         self.model_name = model_name  # e.g. "google_genai:gemini-2.5-flash-lite"
         self.job_list_path = job_list_path
@@ -56,35 +82,46 @@ class JobMatching:
         base_docs = [self.row_to_doc(r) for _, r in self.df.iterrows()]
         print(f"Loaded {len(base_docs)} base docs")
 
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1200,
-            chunk_overlap=150,
-            separators=["\n\n", "\n", " ", ""],
-        )
+        db_dir="chroma_langchain_n_db"
 
-        chunked_docs = []
-        for d in base_docs:
-            for i, ch in enumerate(splitter.split_text(d.page_content)):
-                md = dict(d.metadata)
-                md["chunk"] = i
-                chunked_docs.append(Document(page_content=ch, metadata=md))
+        if  os.path.exists(db_dir):
+            print("Loading existing Chroma database...")
+            self.vector_store = Chroma(
+                collection_name="jobs_rag",
+                embedding_function=self.embeddings,
+                persist_directory=db_dir,
+            )
+        else:
 
-        print(f"Prepared {len(chunked_docs)} chunks")
+            splitter = RecursiveCharacterTextSplitter(
+                chunk_size=1200,
+                chunk_overlap=150,
+                separators=["\n\n", "\n", " ", ""],
+            )
 
-        self.vector_store = Chroma(
-            collection_name="jobs_rag",
-            embedding_function=self.embeddings,
-            persist_directory="./chroma_langchain_n_db",
-        )
+            chunked_docs = []
+            for d in base_docs:
+                for i, ch in enumerate(splitter.split_text(d.page_content)):
+                    md = dict(d.metadata)
+                    md["chunk"] = i
+                    chunked_docs.append(Document(page_content=ch, metadata=md))
 
-        BATCH_SIZE = 100
-        ids = []
-        for i in range(0, len(chunked_docs), BATCH_SIZE):
-            batch = chunked_docs[i : i + BATCH_SIZE]
-            ids.extend(self.vector_store.add_documents(batch))
+            print(f"Prepared {len(chunked_docs)} chunks")
 
-        print("Example IDs:", ids[:3])
-        print("Done indexing.")
+            self.vector_store = Chroma(
+                collection_name="jobs_rag",
+                embedding_function=self.embeddings,
+                persist_directory="./chroma_langchain_n_db",
+            )
+
+            BATCH_SIZE = 100
+            ids = []
+            for i in range(0, len(chunked_docs), BATCH_SIZE):
+                batch = chunked_docs[i : i + BATCH_SIZE]
+                ids.extend(self.vector_store.add_documents(batch))
+
+            print("Example IDs:", ids[:3])
+            print("Done indexing.")
 
         self.df_by_id = self.df.set_index("doc_id", drop=False)
         self.retriever = self.vector_store.as_retriever(search_kwargs={"k": self.search_param})

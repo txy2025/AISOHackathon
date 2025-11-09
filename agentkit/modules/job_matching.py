@@ -250,20 +250,20 @@ class JobMatching:
         return results
 
 
-if __name__ == "__main__":
-    jm = JobMatching(
-        model_name="gemini-2.5-flash-lite",  # Google Generative AI chat model name
-        job_list_path="joblist_clean_for_rag.csv",
-    )
-    jm.load_joblist()
+# if __name__ == "__main__":
+#     jm = JobMatching(
+#         model_name="gemini-2.5-flash-lite",  # Google Generative AI chat model name
+#         job_list_path="joblist_clean_for_rag.csv",
+#     )
+#     jm.load_joblist()
 
-    cv_summary=jm.get_user_info(1)
-    print(cv_summary)
+#     cv_summary=jm.get_user_info(1)
+#     print(cv_summary)
 
-    # query = "skills: python, new graduate, Amsterdam, Computer Science, AI, Data Science"
-    # #results = jm.exec_query(query, top_k=5)
-    # results = jm.exec_query_by_user(1, top_k=5)
+#     # query = "skills: python, new graduate, Amsterdam, Computer Science, AI, Data Science"
+#     # #results = jm.exec_query(query, top_k=5)
+#     # results = jm.exec_query_by_user(1, top_k=5)
     
-    # summaries = jm.refine_result(results)
-    # for s in summaries:
-    #     print("\n--- SUMMARY ---\n", s)
+#     # summaries = jm.refine_result(results)
+#     # for s in summaries:
+#     #     print("\n--- SUMMARY ---\n", s)

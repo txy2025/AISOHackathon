@@ -122,19 +122,6 @@ def get_jobs_for_embedding(embedding: List[float], top_k: int = 5) -> List[Dict[
     ]
 
 
-# ---------- User Actions ----------
-def save_user_action(user_id: str, job: Dict[str, Any], action: str) -> None:
-    """Record a user action like 'like', 'save', 'apply'."""
-    _ensure_db()
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO user_actions (user_id, job_id, action) VALUES (?, ?, ?)",
-        (user_id, job["id"], action),
-    )
-    conn.commit()
-    conn.close()
-
 
 # ---------- Email Sending ----------
 def send_email_to_recruiter(to: str, subject: str, body: str, attachment_path: str) -> str:

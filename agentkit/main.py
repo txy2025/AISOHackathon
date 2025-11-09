@@ -29,18 +29,10 @@ async def upload_cv(user_id: str = Form(...), file: UploadFile = None):
 
     # --- Step 2: Extract metadata using Gemini ---
     metadata = extract_metadata(file_path)
-    summary = metadata.get("summary", "No summary found")
-
-    # --- Step 3: Run job-matching workflow (optional) ---
-    state = {"user_id": user_id, "cv_text": metadata.get("raw_text", "")}
-    result = workflow.invoke(state)
 
     # --- Step 4: Return everything ---
     return {
-        "message": result.get("assistant_message", "CV processed successfully."),
-        "metadata": metadata,
-        "summary": summary,
-        "job_matches": result.get("job_search_results", []),
+        "message": "CV processed successfully.",
     }
 
 

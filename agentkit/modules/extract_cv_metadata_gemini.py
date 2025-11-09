@@ -192,19 +192,20 @@ def save_to_db(metadata: dict, summary: str):
     # Insert all key fields safely
     cursor.execute(
         """
-        INSERT INTO cv_profiles (
-            name, emails, phones, linkedin, github, summary, skills,
+        INSERT OR REPLACE INTO cv_profiles (
+            id, name, emails, phones, linkedin, github, summary, skills,
             education, experience, projects, languages, industries, raw_text, created_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
+            record_id,
             metadata.get("name", ""),
             ", ".join(metadata.get("contact_info", {}).get("emails", [])),
             ", ".join(metadata.get("contact_info", {}).get("phones", [])),
             ", ".join(metadata.get("contact_info", {}).get("linkedin", [])),
             ", ".join(metadata.get("contact_info", {}).get("github", [])),
-            summary or metadata.get("summary", ""),  # ✅ ensures summary always saved
+            summary or metadata.get("summary", ""),
             ", ".join(metadata.get("skills", [])),
             json.dumps(metadata.get("education", []), ensure_ascii=False),
             json.dumps(metadata.get("experience", []), ensure_ascii=False),
